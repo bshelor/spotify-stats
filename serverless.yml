@@ -1,0 +1,51 @@
+service: spotify-stats
+frameworkVersion: '3'
+
+provider:
+  name: aws
+  stage: dev
+  runtime: nodejs18.x
+  stackTags:
+    owner: 'bshelor'
+    service: ${self:service}
+
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - secretsmanager:GetSecretValue
+          Resource:
+            - '*'
+        - Effect: Allow
+          Action:
+            - s3:ListBucket
+            - s3:PutObject
+            - s3:GetObject
+            - s3:DeleteObject
+          Resource:
+            - !GetAtt DataBucket.Arn
+            - !Join ['', [!GetAtt DataBucket.Arn, '/*']]
+  
+  environment:
+    BUCKET: !Ref DataBucket
+
+functions:
+  rankArtists:
+    handler: src/fetchAndRank.handler
+    timeout: 300
+
+custom:
+  currentStage: ${opt:stage, self:provider.stage}
+  region: ${opt:region, self:provider.region, "us-east-1"}
+
+resources:
+  Resources:
+    DataBucket:
+      Type: 'AWS::S3::Bucket'
+      Properties:
+        BucketName: artist-data-test-2
+
+plugins:
+  - serverless-plugin-typescript
+  - serverless-plugin-resource-tagging

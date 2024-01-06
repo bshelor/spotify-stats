@@ -2,7 +2,8 @@ import axios from 'axios';
 import { AxiosResponse } from 'axios';
 import { Artist } from './rankArtists';
 import { config } from 'dotenv';
-import { putObject } from './utils/aws-s3';
+import { putObject } from './utils/aws/s3';
+import { getSecret } from './utils/aws/secretsManager';
 
 config({ path: '.env' });
 
@@ -14,27 +15,32 @@ const alphabetLetters = [
   'y', 'z' 
 ];
 
-let token: string;
+/**
+ * Fetch a new token for the Spotify API
+ * @returns auth token
+ */
 const authorize = async () => {
   const paramStr = 'grant_type=client_credentials';
+  const authToken = await getSecret('spotify_auth_token');
   const response = await axios.request({
     method: 'POST',
     headers: {
       'content-type': 'application/x-www-form-urlencoded',
-      'Authorization': `Basic ${process.env['AUTH_KEY']}`
+      'Authorization': `Basic ${authToken}`
     },
     url: 'https://accounts.spotify.com/api/token',
     data: paramStr
   });
 
-  token = response.data.access_token;
+  return response.data.access_token;
 };
 
 /**
- * @{link https://developer.spotify.com/documentation/web-api/reference/search}
+ * Fetch all artists.
+ * {@link https://developer.spotify.com/documentation/web-api/reference/search}
  */
 export const fetch = async () => {
-  await authorize();
+  const token = await authorize();
 
   let batchCount = 0;
   let next;

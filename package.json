@@ -3,14 +3,19 @@
     "compile": "tsc",
     "fetch": "node dist/fetchAllArtists.js",
     "rank": "node dist/rankArtists.js",
-    "calculate": "node dist/fetchAndRank.js"
+    "calculate": "node dist/fetchAndRank.js",
+    "sendTest": "node dist/utils/sendgrid/emails.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.485.0",
+    "@aws-sdk/client-secrets-manager": "^3.485.0",
+    "@sendgrid/mail": "^8.1.0",
     "axios": "^1.5.1",
     "dotenv": "^16.3.1"
   },
   "devDependencies": {
-    "@types/node": "^20.8.6"
+    "@types/node": "^20.8.6",
+    "serverless-plugin-resource-tagging": "^1.2.0",
+    "serverless-plugin-typescript": "^2.1.5"
   }
 }

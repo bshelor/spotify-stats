@@ -1,5 +1,5 @@
-import { readFile, readdir, writeFile } from 'fs/promises';
 import { toCsv } from './utils/toCsv';
+import { listObjects, getObject, putObject } from './utils/aws-s3';
 
 export type Artist = {
   id: string;
@@ -9,11 +9,10 @@ export type Artist = {
 
 export const rank = async (date: string) => {
   const dir = `data/${date}`;
-  const files = await readdir(dir);
+  const res = await listObjects(dir);
   const artists: Artist[] = [];
-  for (const file of files) {
-    const fileArtists = JSON.parse((await readFile(`${dir}/${file}`)).toString());
-    console.log(artists[0]);
+  for (const file of res.objects) {
+    const fileArtists = await getObject(file.path) as Artist[];
     fileArtists.reduce((acc: Artist[], a: Artist) => {
       acc.push(a);
       return acc;
@@ -24,5 +23,5 @@ export const rank = async (date: string) => {
 
   const csvStr = toCsv(artists);
 
-  await writeFile(`data/${date}/ranked.csv`, csvStr);
+  await putObject(csvStr, `data/${date}/ranked.csv`);
 };

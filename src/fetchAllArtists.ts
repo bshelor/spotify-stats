@@ -1,8 +1,8 @@
 import axios from 'axios';
 import { AxiosResponse } from 'axios';
-import { writeFile, mkdir } from 'fs/promises';
 import { Artist } from './rankArtists';
 import { config } from 'dotenv';
+import { putObject } from './utils/aws-s3';
 
 config({ path: '.env' });
 
@@ -41,7 +41,6 @@ export const fetch = async () => {
   const date = new Date().toISOString();
   const dir = `data/${date}`;
   try {
-    await mkdir(dir);
     const artistMap = new Map();
     for (const letter of alphabetLetters) {
       next = undefined;
@@ -83,7 +82,8 @@ export const fetch = async () => {
     const artistsForFile: Artist[] = [];
     artistMap.forEach((value: Artist, key) => { artistsForFile.push(value); });
     batchCount += 1;
-    await writeFile(`${dir}/artists-${batchCount}.json`, JSON.stringify(artistsForFile), 'utf8');
+
+    await putObject(artistsForFile, `${dir}/artists-${batchCount}.json`);
   } catch (error) {
     console.error(error);
   }

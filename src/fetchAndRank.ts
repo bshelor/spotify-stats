@@ -3,7 +3,8 @@ import { rank } from './rankArtists';
 import { sendBatch } from './utils/sendgrid/emails';
 
 const emailBody = `
-  Here is your weekly report of the current artist rankings. Sourced from Spotify.
+  Here is your weekly report of the current artist rankings. Sourced from Spotify.\n\n
+  Think an artist is missing? Let me know, I'm still working out the kinks on searching Spotify's API.
 `
 
 export const handler = async () => {

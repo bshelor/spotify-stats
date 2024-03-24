@@ -1,14 +1,11 @@
-import axios from 'axios';
-import { AxiosResponse } from 'axios';
-import { Artist } from './rankArtists';
 import { config } from 'dotenv';
+
 import { putObject } from './utils/aws/s3';
-import { getSecret } from './utils/aws/secretsManager';
+import { Artist } from './rankArtists';
+import * as spotify from './services/spotify';
 
 config({ path: '.env' });
 
-const spotifyBase = 'https://api.spotify.com/v1';
-const BATCH_LIMIT = 100000;
 const alphabetLetters = [
   'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l',
   'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x',
@@ -16,69 +13,36 @@ const alphabetLetters = [
 ];
 
 /**
- * Fetch a new token for the Spotify API
- * @returns auth token
- */
-const authorize = async () => {
-  const paramStr = 'grant_type=client_credentials';
-  const authToken = await getSecret('spotify_auth_token');
-  const response = await axios.request({
-    method: 'POST',
-    headers: {
-      'content-type': 'application/x-www-form-urlencoded',
-      'Authorization': `Basic ${authToken}`
-    },
-    url: 'https://accounts.spotify.com/api/token',
-    data: paramStr
-  });
-
-  return response.data.access_token;
-};
-
-/**
- * Fetch all artists.
- * {@link https://developer.spotify.com/documentation/web-api/reference/search}
+ * Fetch all artists and store in a JSON file in S3.
  */
 export const fetch = async () => {
-  const token = await authorize();
-
   let batchCount = 0;
   let next;
   const date = new Date().toISOString();
   const dir = `data/${date}`;
   try {
     const artistMap = new Map();
+    // TODO: recursively search each letter to truly grab all artists. API limits to 1000 result set
     for (const letter of alphabetLetters) {
       next = undefined;
       let artistCountByLetter = 0;
       console.log(`Fetching artists starting with letter "${letter}"`);
       // fetch all artists for the letter
       while (next !== null) {
-        const queryStr = `q=${letter}&type=artist`;
-        const url = next || `${spotifyBase}/search?${queryStr}&limit=50`;
-        console.log(`Requesting... url=${url}`);
-        const response = await axios.request({
-          method: 'GET',
-          url: url,
-          headers: {
-            Authorization: `Bearer ${token}`
+        const { artists, nextUrl } = await spotify.fetchArtists(letter, next);
+
+        artistCountByLetter += artists.length;
+
+        artists.forEach((i: spotify.SpotifyArtist) => {
+          if (!spotify.isNoise(i)) {
+            artistMap.set(i.id, {
+              id: i.id,
+              name: i.name,
+              popularity: i.popularity
+            });
           }
-        }) as AxiosResponse;
-
-        if (response.status >= 300) {
-          throw new Error(`Request failed. Response: ${JSON.stringify(response.data)}. Request: ${JSON.stringify(response.request)}`);
-        }
-
-        artistCountByLetter += response.data.artists.items.length;
-
-        response.data.artists.items.forEach((i: Record<string, any>) => {
-          artistMap.set(i.id, {
-            id: i.id,
-            name: i.name,
-            popularity: i.popularity
-          });
         });
-        next = response.data.artists.next;
+        next = nextUrl;
       }
       console.log(`Fetched ${artistCountByLetter} artists for letter "${letter}"`);
     }

@@ -12,10 +12,10 @@ export const toCsv = (array: Record<string, any>[]): string => {
   let first = true;
   Object.keys(array[0]).forEach(k => {
     if (first) {
-      csvString += `${k}`;
+      csvString += `"${k}"`;
       first = false;
     } else {
-      csvString += `,${k}`
+      csvString += `,"${k}"`
     }
   });
   csvString += '\n';
@@ -24,10 +24,10 @@ export const toCsv = (array: Record<string, any>[]): string => {
     let first = true;
     Object.keys(e).forEach(k => {
       if (first) {
-        csvString += `${e[k]}`;
+        csvString += `"${e[k]}"`;
         first = false;
       } else {
-        csvString += `,${e[k]}`;
+        csvString += `,"${e[k]}"`;
       }
     });
     csvString += '\n';

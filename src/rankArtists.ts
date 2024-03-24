@@ -28,3 +28,12 @@ export const rank = async (date: string) => {
   await putObject(csvStr, `data/${date}/ranked.csv`);
   return csvStr;
 };
+
+// rank()
+//   .then(res => {
+//     console.log(res);
+//     process.exit(0);
+//   }).catch(err => {
+//     console.log(err);
+//     process.exit(1);
+//   });

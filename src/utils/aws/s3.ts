@@ -1,4 +1,8 @@
+// import { config } from 'dotenv';
+
 import { DeleteObjectCommand, PutObjectCommand, GetObjectCommand, S3Client, ListObjectsV2Command } from '@aws-sdk/client-s3';
+
+// config({ path: '.env' });
 
 const s3 = new S3Client({ region: 'us-east-1' });
 const Bucket = process.env['BUCKET'];

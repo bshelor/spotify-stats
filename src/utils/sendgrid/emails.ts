@@ -41,6 +41,12 @@ export const sendBatch = async (
     console.log("🚀 ~ file: emails.ts:38 ~ result:", result)
     return { statusCode: result.statusCode, body: result.body, messageId: result.headers['x-message-id'] };
   } catch (err: unknown) {
+    await sendOne(
+      'bshelor24@gmail.com',
+      'Data Send Failed',
+      'The email batch failed to send. Check lambda logs',
+      'The email batch failed to send. Check lambda logs'
+    )
     throw err;
   }
 }

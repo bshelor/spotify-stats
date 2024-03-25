@@ -1,13 +1,16 @@
 import { config } from 'dotenv';
+import { stringify } from 'csv-stringify/sync';
 
 import { putObject } from './utils/aws/s3';
 import { Artist } from './rankArtists';
 import * as spotify from './services/spotify';
+import { toCsv } from './utils/toCsv';
 
 config({ path: '.env' });
 
 const alphabetLetters = [
-  'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l',
+  'a',
+  'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l',
   'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x',
   'y', 'z' 
 ];
@@ -38,7 +41,10 @@ export const fetch = async () => {
             artistMap.set(i.id, {
               id: i.id,
               name: i.name,
-              popularity: i.popularity
+              popularity: i.popularity,
+              genres: i.genres,
+              href: `https://open.spotify.com/artist/${i.id}`,
+              // imageLink: (i.images && i.images.length) ? i.images[0].url : null // API doesn't give any values right now
             });
           }
         });

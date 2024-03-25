@@ -1,5 +1,6 @@
 /**
- * Convert JSON object array to csv string
+ * Convert JSON object array to csv string.
+ * Does not support array values
  * @param array 
  * @returns csv string
  */

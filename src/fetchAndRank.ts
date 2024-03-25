@@ -1,30 +1,43 @@
+import fs from 'fs';
+import path from 'path';
+
 import { fetch } from './fetchAllArtists';
 import { rank } from './rankArtists';
 import { sendBatch } from './utils/sendgrid/emails';
+import { prepareTopTenArtistSubstitutionData } from './utils/sendgrid/emails';
 
-const emailBody = `
-  Here is your weekly report of the current artist rankings. Sourced from Spotify.\n\n
-  Think an artist is missing? Let me know, I'm still working out the kinks on searching Spotify's API.
-`
+const dir = path.join(__dirname, '../src/html/weekly_rankings_report.html');
+
+const RECIPIENTS = [
+  'bshelor24@gmail.com',
+  'christopher.a.shelor@gmail.com'
+];
 
 export const handler = async () => {
   const date = await fetch();
-  // const date = '2024-01-06T18:21:00.840Z';
-  const rankedArtistsCsvStr = await rank(date);
+  const { rankedArtistsCsvStr, artists } = await rank(date);
+
+  const topTen = prepareTopTenArtistSubstitutionData(artists);
+
+  const emailTemplate = fs.readFileSync(dir, { encoding: 'utf8' });
   return await sendBatch(
-    ['bshelor24@gmail.com', 'christopher.a.shelor@gmail.com'],
+    RECIPIENTS,
     `Spotify Rankings - Week of ${new Date().toLocaleDateString()}`,
-    emailBody,
-    emailBody,
+    emailTemplate.toString(),
+    emailTemplate.toString(),
     [
       {
         content: Buffer.from(rankedArtistsCsvStr).toString('base64'),
-        filename: `ranked-artists-${new Date().toLocaleDateString()}.csv`,
+        filename: `all-ranked-artists-${new Date().toLocaleDateString()}.csv`,
         type: 'text/csv',
         disposition: 'attachment',
         content_id: 'mytext'
       }
-    ]
+    ],
+    {
+      ...topTen, 
+      date: new Date(date).toLocaleDateString()
+    }
   )
 };
 

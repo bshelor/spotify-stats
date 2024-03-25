@@ -1,10 +1,13 @@
-import { toCsv } from './utils/toCsv';
+import { stringify } from 'csv-stringify/sync';
+
 import { listObjects, getObject, putObject } from './utils/aws/s3';
 
 export type Artist = {
   id: string;
   name: string;
   popularity: number;
+  genres: string[];
+  href: string;
 };
 
 export const rank = async (date: string) => {
@@ -23,10 +26,14 @@ export const rank = async (date: string) => {
 
   artists.sort((a: Artist, b: Artist) => (a.popularity > b.popularity ? -1 : 0));
 
-  const csvStr = toCsv(artists);
+  const csvStr = stringify(artists, { header: true });
 
   await putObject(csvStr, `data/${date}/ranked.csv`);
-  return csvStr;
+  
+  return {
+    rankedArtistsCsvStr: csvStr,
+    artists: artists
+  };
 };
 
 // rank()

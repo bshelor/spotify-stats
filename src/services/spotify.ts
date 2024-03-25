@@ -8,6 +8,8 @@ const spotifyBase = 'https://api.spotify.com/v1';
 export type SpotifyArtist = {
   name: string;
   popularity: number;
+  href: string;
+  genres: string[];
   [name: string]: unknown;
 };
 

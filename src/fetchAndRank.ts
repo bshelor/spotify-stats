@@ -1,12 +1,8 @@
-import fs from 'fs';
-import path from 'path';
-
 import { fetch } from './fetchAllArtists';
-import { rank } from './rankArtists';
+import { template } from './html/weekly_rankings_report';
 import { sendBatch } from './utils/sendgrid/emails';
 import { prepareTopTenArtistSubstitutionData } from './utils/sendgrid/emails';
-
-const dir = path.join(__dirname, '../src/html/weekly_rankings_report.html');
+import { rank } from './rankArtists';
 
 const RECIPIENTS = [
   'bshelor24@gmail.com',
@@ -19,12 +15,11 @@ export const handler = async () => {
 
   const topTen = prepareTopTenArtistSubstitutionData(artists);
 
-  const emailTemplate = fs.readFileSync(dir, { encoding: 'utf8' });
   return await sendBatch(
     RECIPIENTS,
     `Spotify Rankings - Week of ${new Date().toLocaleDateString()}`,
-    emailTemplate.toString(),
-    emailTemplate.toString(),
+    template,
+    template,
     [
       {
         content: Buffer.from(rankedArtistsCsvStr).toString('base64'),

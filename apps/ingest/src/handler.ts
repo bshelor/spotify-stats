@@ -8,8 +8,8 @@ const RECIPIENTS = ['bshelor24@gmail.com', 'christopher.a.shelor@gmail.com'];
 
 export const handler = async () => {
   if (!process.env.DATABASE_URL) {
-    const dbUrl = await getSecret('database_url');
-    if (!dbUrl) throw new Error('database_url secret missing');
+    const dbUrl = await getSecret('artist_stats_database_url');
+    if (!dbUrl) throw new Error('artist_stats_database_url secret missing');
     process.env.DATABASE_URL = dbUrl;
   }
 

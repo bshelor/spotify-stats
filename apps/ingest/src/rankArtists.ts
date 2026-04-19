@@ -1,6 +1,8 @@
 import { stringify } from 'csv-stringify/sync';
 
-import { listObjects, getObject, putObject } from './utils/aws/s3';
+import { upsertArtistsAndSnapshot } from '@spotify-stats/db';
+
+import { listObjects, getObject, putObject } from './utils/aws/s3.js';
 
 export type Artist = {
   id: string;
@@ -16,7 +18,7 @@ export const rank = async (date: string) => {
   const artists: Artist[] = [];
   for (const file of res.objects) {
     if (!file.path.includes('ranked')) {
-      const fileArtists = await getObject(file.path) as Artist[];
+      const fileArtists = (await getObject(file.path)) as Artist[];
       fileArtists.reduce((acc: Artist[], a: Artist) => {
         acc.push(a);
         return acc;
@@ -24,23 +26,18 @@ export const rank = async (date: string) => {
     }
   }
 
-  artists.sort((a: Artist, b: Artist) => (a.popularity > b.popularity ? -1 : 0));
+  artists.sort((a, b) => (a.popularity > b.popularity ? -1 : 0));
 
   const csvStr = stringify(artists, { header: true });
 
   await putObject(csvStr, `data/${date}/ranked.csv`);
-  
+
+  const capturedAt = new Date(date);
+  await upsertArtistsAndSnapshot(artists, capturedAt);
+
   return {
     rankedArtistsCsvStr: csvStr,
-    artists: artists
+    artists,
+    capturedAt,
   };
 };
-
-// rank()
-//   .then(res => {
-//     console.log(res);
-//     process.exit(0);
-//   }).catch(err => {
-//     console.log(err);
-//     process.exit(1);
-//   });

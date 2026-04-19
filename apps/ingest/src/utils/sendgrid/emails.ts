@@ -1,7 +1,7 @@
 import sgMail from '@sendgrid/mail';
 import { config } from 'dotenv';
-import { getSecret } from '../aws/secretsManager';
-import { Artist } from '../../rankArtists';
+import { getSecret } from '../aws/secretsManager.js';
+import type { Artist } from '../../rankArtists.js';
 
 config({ path: '.env' });
 
@@ -85,14 +85,12 @@ export const prepareTopTenArtistSubstitutionData = (artists: Artist[]) => {
 
   for (let i = 0; i < 10; i++) {
     const artist = artists[i];
+    if (!artist) break;
     Object.keys(fieldMappings).forEach((key: string) => {
       const mappedKey = fieldMappings[key as keyof typeof fieldMappings];
-
-      if (typeof artist[key as keyof typeof artist] !== 'string') {
-        finalObject[`${mappedKey}${i + 1}`] = JSON.stringify(artist[key as keyof typeof artist]);
-      } else {
-        finalObject[`${mappedKey}${i + 1}`] = artist[key as keyof typeof artist] as string;
-      }
+      const value = artist[key as keyof typeof artist];
+      finalObject[`${mappedKey}${i + 1}`] =
+        typeof value === 'string' ? value : JSON.stringify(value);
     });
   }
 

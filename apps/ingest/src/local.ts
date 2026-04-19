@@ -1,8 +1,6 @@
-import { config } from 'dotenv';
+import 'dotenv/config';
 
 import { handler } from './handler.js';
-
-config({ path: '.env' });
 
 handler()
   .then((res) => {

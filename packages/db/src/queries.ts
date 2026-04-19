@@ -14,9 +14,12 @@ export type RankedArtistInput = {
 export async function getLatestCapturedAt() {
   const db = getDb();
   const [row] = await db
-    .select({ capturedAt: sql<Date>`max(${artistSnapshots.capturedAt})` })
-    .from(artistSnapshots);
-  return row?.capturedAt ?? null;
+    .select({ capturedAt: artistSnapshots.capturedAt })
+    .from(artistSnapshots)
+    .orderBy(desc(artistSnapshots.capturedAt))
+    .limit(1);
+  if (!row) return null;
+  return row.capturedAt instanceof Date ? row.capturedAt : new Date(row.capturedAt);
 }
 
 export async function getTopArtistsAt(capturedAt: Date, limit = 10) {
@@ -173,7 +176,7 @@ export async function getCaptureDates(limit = 20) {
     .from(artistSnapshots)
     .orderBy(desc(artistSnapshots.capturedAt))
     .limit(limit);
-  return rows.map((r) => r.capturedAt);
+  return rows.map((r) => (r.capturedAt instanceof Date ? r.capturedAt : new Date(r.capturedAt)));
 }
 
 export async function getSnapshotsBetween(artistId: string, from: Date, to: Date) {

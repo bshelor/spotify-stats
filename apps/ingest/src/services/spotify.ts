@@ -1,7 +1,6 @@
-import axios from 'axios';
-import { AxiosResponse } from 'axios';
+import axios, { type AxiosResponse } from 'axios';
 
-import { getSecret } from '../utils/aws/secretsManager';
+import { getSecret } from '../utils/aws/secretsManager.js';
 
 const spotifyBase = 'https://api.spotify.com/v1';
 

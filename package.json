@@ -1,22 +1,21 @@
 {
-  "scripts": {
-    "compile": "tsc",
-    "fetch": "node dist/fetchAllArtists.js",
-    "rank": "node dist/rankArtists.js",
-    "calculate": "node dist/fetchAndRank.js",
-    "sendTest": "node dist/utils/sendgrid/emails.js"
+  "name": "spotify-stats",
+  "private": true,
+  "version": "0.0.0",
+  "engines": {
+    "node": ">=22"
   },
-  "dependencies": {
-    "@aws-sdk/client-s3": "^3.485.0",
-    "@aws-sdk/client-secrets-manager": "^3.485.0",
-    "@sendgrid/mail": "^8.1.0",
-    "axios": "^1.5.1",
-    "csv-stringify": "^6.4.6",
-    "dotenv": "^16.3.1"
+  "packageManager": "pnpm@10.12.1",
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "type-check": "turbo run type-check",
+    "db:generate": "pnpm --filter @spotify-stats/db db:generate",
+    "db:migrate": "pnpm --filter @spotify-stats/db db:migrate"
   },
   "devDependencies": {
-    "@types/node": "^20.8.6",
-    "serverless-plugin-resource-tagging": "^1.2.0",
-    "serverless-plugin-typescript": "^2.1.5"
+    "turbo": "^2.3.3",
+    "typescript": "^5.7.2"
   }
 }

@@ -3,8 +3,10 @@ frameworkVersion: '3'
 
 provider:
   name: aws
-  stage: dev
-  runtime: nodejs18.x
+  stage: ${opt:stage, 'dev'}
+  region: ${opt:region, 'us-east-1'}
+  runtime: nodejs22.x
+  memorySize: 512
   stackTags:
     owner: 'bshelor'
     service: ${self:service}
@@ -26,18 +28,34 @@ provider:
           Resource:
             - !GetAtt DataBucket.Arn
             - !Join ['', [!GetAtt DataBucket.Arn, '/*']]
-  
+
   environment:
     BUCKET: !Ref DataBucket
+    NODE_OPTIONS: '--enable-source-maps'
 
 functions:
   rankArtists:
-    handler: src/fetchAndRank.handler
-    timeout: 300
+    handler: src/handler.handler
+    timeout: 600
+    events:
+      - schedule:
+          rate: cron(0 13 ? * MON *)
+          enabled: true
+          description: 'Weekly Spotify artist ranking run (Mondays 13:00 UTC)'
 
 custom:
-  currentStage: ${opt:stage, self:provider.stage}
-  region: ${opt:region, self:provider.region, "us-east-1"}
+  esbuild:
+    bundle: true
+    minify: false
+    sourcemap: true
+    target: node22
+    platform: node
+    format: cjs
+    mainFields:
+      - main
+      - module
+    external:
+      - '@aws-sdk/*'
 
 resources:
   Resources:
@@ -47,5 +65,5 @@ resources:
         BucketName: artist-data-test-2
 
 plugins:
-  - serverless-plugin-typescript
+  - serverless-esbuild
   - serverless-plugin-resource-tagging

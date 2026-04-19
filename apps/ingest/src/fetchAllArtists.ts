@@ -1,10 +1,8 @@
 import { config } from 'dotenv';
-import { stringify } from 'csv-stringify/sync';
 
-import { putObject } from './utils/aws/s3';
-import { Artist } from './rankArtists';
-import * as spotify from './services/spotify';
-import { toCsv } from './utils/toCsv';
+import { putObject } from './utils/aws/s3.js';
+import type { Artist } from './rankArtists.js';
+import * as spotify from './services/spotify.js';
 
 config({ path: '.env' });
 
@@ -24,7 +22,7 @@ export const fetch = async () => {
   const date = new Date().toISOString();
   const dir = `data/${date}`;
   try {
-    const artistMap = new Map();
+    const artistMap = new Map<string, Artist>();
     // TODO: recursively search each letter to truly grab all artists. API limits to 1000 result set
     for (const letter of alphabetLetters) {
       next = undefined;
@@ -38,13 +36,12 @@ export const fetch = async () => {
 
         artists.forEach((i: spotify.SpotifyArtist) => {
           if (!spotify.isNoise(i)) {
-            artistMap.set(i.id, {
-              id: i.id,
+            artistMap.set(i.id as string, {
+              id: i.id as string,
               name: i.name,
               popularity: i.popularity,
               genres: i.genres,
               href: `https://open.spotify.com/artist/${i.id}`,
-              // imageLink: (i.images && i.images.length) ? i.images[0].url : null // API doesn't give any values right now
             });
           }
         });
@@ -55,8 +52,7 @@ export const fetch = async () => {
 
     console.log(`Fetched ${artistMap.size} artists`);
 
-    const artistsForFile: Artist[] = [];
-    artistMap.forEach((value: Artist, key) => { artistsForFile.push(value); });
+    const artistsForFile: Artist[] = Array.from(artistMap.values());
     batchCount += 1;
 
     await putObject(artistsForFile, `${dir}/artists-${batchCount}.json`);

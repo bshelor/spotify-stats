@@ -1,5 +1,11 @@
 .env
+.env.local
+.env.*.local
 .DS_Store
 dist/*
 node_modules
 .serverless
+.turbo
+.next
+*.tsbuildinfo
+packages/db/drizzle/out

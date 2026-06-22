@@ -139,3 +139,120 @@ td a:hover {
   color: var(--muted);
   font-size: 0.85rem;
 }
+
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 1.25rem;
+  align-items: flex-end;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 140px;
+}
+
+.filter-group label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+}
+
+.filter-group input {
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.45rem 0.6rem;
+  font: inherit;
+  min-width: 0;
+}
+
+.filter-group input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.filter-range {
+  flex-direction: row;
+  align-items: flex-end;
+  gap: 0.5rem;
+}
+
+.filter-range label {
+  align-self: flex-end;
+  padding-bottom: 0.55rem;
+  margin-right: 0.25rem;
+}
+
+.filter-range input {
+  width: 70px;
+}
+
+.filter-actions {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  margin-left: auto;
+}
+
+.filter-actions button {
+  background: var(--accent);
+  color: #0b0d10;
+  border: none;
+  border-radius: 6px;
+  padding: 0.5rem 1rem;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.filter-actions button:hover {
+  filter: brightness(1.05);
+}
+
+.filter-clear {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.filter-clear:hover {
+  color: var(--text);
+}
+
+th a {
+  color: inherit;
+  display: inline-block;
+}
+
+th a:hover {
+  color: var(--text);
+}
+
+.pager {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 1.5rem;
+}
+
+.pager-info {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.pager-links {
+  display: flex;
+  gap: 1.25rem;
+}
+
+.pager-links a {
+  color: var(--accent);
+}
+
+.pager-links a:hover {
+  text-decoration: underline;
+}

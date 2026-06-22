@@ -1,7 +1,98 @@
-import { and, desc, eq, gte, lte, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, ilike, lte, sql, type SQL } from 'drizzle-orm';
 
 import { getDb } from './client';
 import { artists, artistSnapshots, type NewArtist } from './schema';
+
+export type LeaderboardSort = 'rank' | 'popularity' | 'name';
+export type LeaderboardDir = 'asc' | 'desc';
+
+export type LeaderboardFilters = {
+  q?: string;
+  popMin?: number;
+  popMax?: number;
+  rankMin?: number;
+  rankMax?: number;
+  genre?: string;
+};
+
+export type LeaderboardParams = {
+  capturedAt: Date;
+  filters?: LeaderboardFilters;
+  sort?: LeaderboardSort;
+  dir?: LeaderboardDir;
+  limit?: number;
+  offset?: number;
+};
+
+function buildLeaderboardConditions(
+  capturedAt: Date,
+  filters: LeaderboardFilters = {},
+): SQL[] {
+  const conditions: SQL[] = [eq(artistSnapshots.capturedAt, capturedAt)];
+
+  const q = filters.q?.trim();
+  if (q) conditions.push(ilike(artists.name, `%${q}%`));
+
+  if (filters.popMin !== undefined) conditions.push(gte(artistSnapshots.popularity, filters.popMin));
+  if (filters.popMax !== undefined) conditions.push(lte(artistSnapshots.popularity, filters.popMax));
+
+  if (filters.rankMin !== undefined) conditions.push(gte(artistSnapshots.rank, filters.rankMin));
+  if (filters.rankMax !== undefined) conditions.push(lte(artistSnapshots.rank, filters.rankMax));
+
+  const genre = filters.genre?.trim();
+  if (genre) conditions.push(sql`${genre} = ANY(${artists.genres})`);
+
+  return conditions;
+}
+
+export async function getLeaderboard({
+  capturedAt,
+  filters = {},
+  sort = 'rank',
+  dir = 'asc',
+  limit = 100,
+  offset = 0,
+}: LeaderboardParams) {
+  const db = getDb();
+
+  const sortColumn =
+    sort === 'popularity'
+      ? artistSnapshots.popularity
+      : sort === 'name'
+        ? artists.name
+        : artistSnapshots.rank;
+
+  const orderBy = dir === 'desc' ? desc(sortColumn) : asc(sortColumn);
+
+  return db
+    .select({
+      id: artists.id,
+      name: artists.name,
+      href: artists.href,
+      genres: artists.genres,
+      popularity: artistSnapshots.popularity,
+      rank: artistSnapshots.rank,
+    })
+    .from(artistSnapshots)
+    .innerJoin(artists, eq(artists.id, artistSnapshots.artistId))
+    .where(and(...buildLeaderboardConditions(capturedAt, filters)))
+    .orderBy(orderBy)
+    .limit(limit)
+    .offset(offset);
+}
+
+export async function getLeaderboardCount({
+  capturedAt,
+  filters = {},
+}: Pick<LeaderboardParams, 'capturedAt' | 'filters'>) {
+  const db = getDb();
+  const [row] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(artistSnapshots)
+    .innerJoin(artists, eq(artists.id, artistSnapshots.artistId))
+    .where(and(...buildLeaderboardConditions(capturedAt, filters)));
+  return row?.count ?? 0;
+}
 
 export type RankedArtistInput = {
   id: string;

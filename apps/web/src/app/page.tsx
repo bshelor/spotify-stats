@@ -7,8 +7,8 @@ import {
   getTopArtistsAt,
 } from '@spotify-stats/db';
 
-import { TopArtistsChart } from '@/components/charts/TopArtistsChart';
-import { deltaLabel, formatDate } from '@/lib/format';
+import { TopArtistsChart } from '../components/charts/TopArtistsChart';
+import { deltaLabel, formatDate } from '../lib/format';
 
 export const dynamic = 'force-dynamic';
 

@@ -4,6 +4,11 @@
     "lib": ["ES2022"],
     "module": "ESNext",
     "moduleResolution": "Bundler",
+    "baseUrl": ".",
+    "paths": {
+      "@spotify-stats/db": ["packages/db/src/index.ts"],
+      "@spotify-stats/db/*": ["packages/db/src/*"]
+    },
     "resolveJsonModule": true,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,

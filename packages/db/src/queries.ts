@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, lte, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, ilike, lte, or, sql } from 'drizzle-orm';
 
 import { getDb } from './client';
 import { artists, artistSnapshots, type NewArtist } from './schema';
@@ -10,6 +10,10 @@ export type RankedArtistInput = {
   genres: string[];
   popularity: number;
 };
+
+function escapeLikePattern(value: string) {
+  return value.replaceAll('\\', '\\\\').replaceAll('%', '\\%').replaceAll('_', '\\_');
+}
 
 function asDate(value: Date | string | null | undefined) {
   if (!value) return null;
@@ -78,8 +82,15 @@ export async function getArtistById(artistId: string) {
   return row ?? null;
 }
 
-export async function getAllArtistsAt(capturedAt: Date, limit = 200, offset = 0) {
+export async function getAllArtistsAt(
+  capturedAt: Date,
+  limit = 200,
+  offset = 0,
+  search?: string,
+) {
   const db = getDb();
+  const trimmedSearch = search?.trim();
+  const searchPattern = trimmedSearch ? `%${escapeLikePattern(trimmedSearch)}%` : undefined;
   return db
     .select({
       id: artists.id,
@@ -91,7 +102,17 @@ export async function getAllArtistsAt(capturedAt: Date, limit = 200, offset = 0)
     })
     .from(artistSnapshots)
     .innerJoin(artists, eq(artists.id, artistSnapshots.artistId))
-    .where(eq(artistSnapshots.capturedAt, capturedAt))
+    .where(
+      trimmedSearch && searchPattern
+        ? and(
+            eq(artistSnapshots.capturedAt, capturedAt),
+            or(
+              ilike(artists.name, searchPattern),
+              sql<boolean>`${artists.genres}::text ILIKE ${searchPattern} ESCAPE '\\'`,
+            ),
+          )
+        : eq(artistSnapshots.capturedAt, capturedAt),
+    )
     .orderBy(artistSnapshots.rank)
     .limit(limit)
     .offset(offset);

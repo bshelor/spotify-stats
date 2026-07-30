@@ -70,6 +70,58 @@ h2 {
   margin-bottom: 2rem;
 }
 
+.search-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin: 0 0 1rem;
+}
+
+.search-label {
+  font-size: 0.85rem;
+  color: var(--muted);
+  letter-spacing: 0.02em;
+}
+
+.search-input {
+  min-width: min(28rem, 100%);
+  flex: 1 1 18rem;
+  background: #101316;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.8rem 1rem;
+  outline: none;
+}
+
+.search-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(29, 185, 84, 0.18);
+}
+
+.search-button,
+.search-clear {
+  border-radius: 999px;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+}
+
+.search-button {
+  cursor: pointer;
+}
+
+.search-button:hover,
+.search-clear:hover {
+  border-color: var(--accent);
+}
+
+.search-clear {
+  color: var(--muted);
+}
+
 .card {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -133,6 +185,12 @@ td a:hover {
   color: var(--muted);
   padding: 2rem;
   text-align: center;
+}
+
+.page-nav {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1.5rem;
 }
 
 .genres {

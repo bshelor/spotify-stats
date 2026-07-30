@@ -3,6 +3,7 @@ import axios, { type AxiosResponse } from 'axios';
 import { getSecret } from '../utils/aws/secretsManager.js';
 
 const spotifyBase = 'https://api.spotify.com/v1';
+const defaultSearchLimit = 10;
 
 export type SpotifyArtist = {
   name: string;
@@ -26,7 +27,7 @@ export const isNoise = (artist: SpotifyArtist) => {
     return true;
   }
   return false;
-}
+};
 
 /**
  * Fetch a new token for the Spotify API
@@ -48,25 +49,43 @@ export const authorize = async () => {
   return response.data.access_token;
 };
 
+export type FetchArtistsOptions = {
+  offset?: number;
+  nextUrl?: string;
+  limit?: number;
+};
+
 /**
  * Fetch artists using the search endpoint.
  *
  * {@link https://developer.spotify.com/documentation/web-api/reference/search}
  *
  * @param query - query string that can be used to narrow down artist search
- * @param next - next url string if available from previous API requests
+ * @param options - pagination controls for either offset-based or next-url paging
  */
-export const fetchArtists = async (query: string, next?: string) => {
+export const fetchArtists = async (query: string, options: FetchArtistsOptions = {}) => {
   if (!token) {
     token = await authorize();
   }
 
-  const queryStr = `q=${query}&type=artist`;
-  const url = next || `${spotifyBase}/search?${queryStr}&limit=50`;
-  console.log(`Requesting... url=${url}`);
+  const { nextUrl, offset, limit = defaultSearchLimit } = options;
+  const url = nextUrl
+    ? new URL(nextUrl)
+    : new URL(`${spotifyBase}/search`);
+
+  if (!nextUrl) {
+    url.searchParams.set('q', query);
+    url.searchParams.set('type', 'artist');
+    url.searchParams.set('limit', String(limit));
+    if (offset !== undefined) {
+      url.searchParams.set('offset', String(offset));
+    }
+  }
+
+  console.log(`Requesting... url=${url.toString()}`);
   const response = await axios.request({
     method: 'GET',
-    url: url,
+    url: url.toString(),
     headers: {
       Authorization: `Bearer ${token}`
     }
@@ -78,6 +97,9 @@ export const fetchArtists = async (query: string, next?: string) => {
 
   return {
     artists: response.data.artists.items as SpotifyArtist[],
-    nextUrl: response.data.artists.next as string | null
+    total: response.data.artists.total as number,
+    limit: response.data.artists.limit as number,
+    offset: response.data.artists.offset as number,
+    nextUrl: response.data.artists.next as string | null,
   };
-}
+};

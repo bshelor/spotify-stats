@@ -5,8 +5,8 @@ export const artists = pgTable('artists', {
   name: text('name').notNull(),
   href: text('href').notNull(),
   genres: text('genres').array().notNull().default([]),
-  firstSeenAt: timestamp('first_seen_at', { withTimezone: true }).notNull().defaultNow(),
-  lastSeenAt: timestamp('last_seen_at', { withTimezone: true }).notNull().defaultNow(),
+  firstSeenAt: timestamp('first_seen_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
+  lastSeenAt: timestamp('last_seen_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
 });
 
 export const artistSnapshots = pgTable(
@@ -15,7 +15,7 @@ export const artistSnapshots = pgTable(
     artistId: text('artist_id')
       .notNull()
       .references(() => artists.id, { onDelete: 'cascade' }),
-    capturedAt: timestamp('captured_at', { withTimezone: true }).notNull(),
+    capturedAt: timestamp('captured_at', { withTimezone: true, mode: 'date' }).notNull(),
     popularity: integer('popularity').notNull(),
     rank: integer('rank').notNull(),
   },

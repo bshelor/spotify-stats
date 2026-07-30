@@ -2,7 +2,7 @@ import Link from 'next/link';
 
 import { getAllArtistsAt, getLatestCapturedAt } from '@spotify-stats/db';
 
-import { formatDate } from '@/lib/format';
+import { formatDate } from '../../lib/format';
 
 export const dynamic = 'force-dynamic';
 

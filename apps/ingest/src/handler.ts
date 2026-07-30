@@ -13,20 +13,24 @@ export const handler = async () => {
     process.env.DATABASE_URL = dbUrl;
   }
 
-  const date = await fetch();
-  const { rankedArtistsCsvStr, artists, capturedAt } = await rank(date);
+  console.log('Starting weekly ingest handler');
+  const capturedAt = await fetch();
+  console.log(`Fetch pipeline completed for ${capturedAt.toISOString()}`);
+  const { rankedArtistsCsvStr, artists } = await rank(capturedAt);
+  console.log(`Ranked ${artists.length} artists for ${capturedAt.toISOString()}`);
 
   const topTen = prepareTopTenArtistSubstitutionData(artists);
+  console.log('Preparing and sending email report');
 
   return await sendBatch(
     RECIPIENTS,
-    `Spotify Rankings - Week of ${new Date().toLocaleDateString()}`,
+    `Spotify Rankings - Week of ${capturedAt.toLocaleDateString()}`,
     template,
     template,
     [
       {
         content: Buffer.from(rankedArtistsCsvStr).toString('base64'),
-        filename: `all-ranked-artists-${new Date().toLocaleDateString()}.csv`,
+        filename: `all-ranked-artists-${capturedAt.toLocaleDateString()}.csv`,
         type: 'text/csv',
         disposition: 'attachment',
         content_id: 'mytext',

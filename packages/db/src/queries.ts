@@ -46,6 +46,23 @@ export async function getTopArtistsAt(capturedAt: Date, limit = 10) {
     .limit(limit);
 }
 
+export async function getRankedArtistsAt(capturedAt: Date) {
+  const db = getDb();
+  return db
+    .select({
+      id: artists.id,
+      name: artists.name,
+      href: artists.href,
+      genres: artists.genres,
+      popularity: artistSnapshots.popularity,
+      rank: artistSnapshots.rank,
+    })
+    .from(artistSnapshots)
+    .innerJoin(artists, eq(artists.id, artistSnapshots.artistId))
+    .where(eq(artistSnapshots.capturedAt, capturedAt))
+    .orderBy(artistSnapshots.rank);
+}
+
 export async function getArtistTimeSeries(artistId: string) {
   const db = getDb();
   return db
@@ -149,8 +166,15 @@ export async function upsertArtistsAndSnapshot(
   rankedArtists: RankedArtistInput[],
   capturedAt: Date,
 ) {
-  if (rankedArtists.length === 0) return;
+  if (rankedArtists.length === 0) {
+    console.log(`Skipping DB upsert for empty artist batch at ${capturedAt.toISOString()}`);
+    return;
+  }
   const db = getDb();
+
+  console.log(
+    `Upserting ${rankedArtists.length} artists and snapshots for ${capturedAt.toISOString()}`,
+  );
 
   const artistRows: NewArtist[] = rankedArtists.map((a) => ({
     id: a.id,
@@ -165,6 +189,7 @@ export async function upsertArtistsAndSnapshot(
   const chunkSize = 500;
   for (let i = 0; i < artistRows.length; i += chunkSize) {
     const chunk = artistRows.slice(i, i + chunkSize);
+    console.log(`Upserting artist chunk ${Math.floor(i / chunkSize) + 1} with ${chunk.length} rows`);
     await db
       .insert(artists)
       .values(chunk)
@@ -188,8 +213,11 @@ export async function upsertArtistsAndSnapshot(
 
   for (let i = 0; i < snapshotRows.length; i += chunkSize) {
     const chunk = snapshotRows.slice(i, i + chunkSize);
+    console.log(`Inserting snapshot chunk ${Math.floor(i / chunkSize) + 1} with ${chunk.length} rows`);
     await db.insert(artistSnapshots).values(chunk).onConflictDoNothing();
   }
+
+  console.log(`Finished DB upsert for ${rankedArtists.length} artists`);
 }
 
 export async function getCaptureDates(limit = 20) {

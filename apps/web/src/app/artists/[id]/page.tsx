@@ -2,8 +2,8 @@ import { notFound } from 'next/navigation';
 
 import { getArtistById, getArtistTimeSeries } from '@spotify-stats/db';
 
-import { PopularityTrendChart } from '@/components/charts/PopularityTrendChart';
-import { formatDate } from '@/lib/format';
+import { PopularityTrendChart } from '../../../components/charts/PopularityTrendChart';
+import { formatDate } from '../../../lib/format';
 
 export const dynamic = 'force-dynamic';
 

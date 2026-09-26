@@ -2,20 +2,23 @@ import { config } from 'dotenv';
 
 import { upsertArtistsAndSnapshot } from '@spotify-stats/db';
 import { runFetchPipeline } from './pipeline.js';
-import * as spotify from './services/spotify.js';
+import { spotifyProvider } from './providers/spotify/index.js';
 
 config({ path: '.env' });
 
-export const fetch = async (capturedAt?: Date) => {
+export const fetch = async (capturedAt?: Date, ingestRunId?: string) => {
   try {
     const result = await runFetchPipeline(
-      spotify.fetchArtists,
-      upsertArtistsAndSnapshot,
+      spotifyProvider,
+      (artists, capturedAt) => upsertArtistsAndSnapshot(artists, capturedAt, {
+        provider: spotifyProvider.name,
+        ingestRunId,
+      }),
       undefined,
       undefined,
       capturedAt,
     );
-    return result.capturedAt;
+    return result;
   } catch (error) {
     console.error(error);
     throw error;

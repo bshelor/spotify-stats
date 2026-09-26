@@ -1,10 +1,13 @@
+import {
+  completeIngestRun,
+  createIngestRun,
+  failIngestRun,
+  musicProvider,
+} from '@spotify-stats/db';
 import { fetch } from './fetchAllArtists.js';
-import { template } from './html/weekly_rankings_report.js';
-import { sendBatch, prepareTopTenArtistSubstitutionData } from './utils/aws/ses.js';
-import { rank } from './rankArtists.js';
+import { archiveRankingSnapshot } from './pipeline/archive.js';
+import { sendWeeklyRankingReport } from './reports/weeklyRankings.js';
 import { getSecret } from './utils/aws/secretsManager.js';
-
-const RECIPIENTS = ['bshelor24@gmail.com', 'christopher.a.shelor@gmail.com'];
 
 type ScheduledEvent = {
   time?: string;
@@ -25,35 +28,30 @@ export const handler = async (event?: ScheduledEvent) => {
   }
 
   console.log('Starting weekly ingest handler');
-  const capturedAt = await fetch(getCapturedAt(event));
-  console.log(`Fetch pipeline completed for ${capturedAt.toISOString()}`);
-  const { rankedArtistsCsvStr, artists } = await rank(capturedAt);
-  console.log(`Ranked ${artists.length} artists for ${capturedAt.toISOString()}`);
-
-  const topTen = prepareTopTenArtistSubstitutionData(artists);
-  console.log('Preparing and sending email report');
+  const capturedAt = getCapturedAt(event) ?? new Date();
+  const ingestRunId = `${musicProvider.spotify}-${capturedAt.toISOString()}`;
+  await createIngestRun({
+    id: ingestRunId,
+    provider: musicProvider.spotify,
+    capturedAt,
+  });
 
   try {
-    const emailResult = await sendBatch(
-      RECIPIENTS,
-      `Spotify Rankings - Week of ${capturedAt.toLocaleDateString()}`,
-      template,
-      template,
-      [
-        {
-          content: Buffer.from(rankedArtistsCsvStr).toString('base64'),
-          filename: `all-ranked-artists-${capturedAt.toLocaleDateString()}.csv`,
-          type: 'text/csv',
-          disposition: 'attachment',
-          content_id: 'mytext',
-        },
-      ],
-      {
-        ...topTen,
-        date: capturedAt.toLocaleDateString(),
-      },
-    );
+    const { rankedArtists } = await fetch(capturedAt, ingestRunId);
+    console.log(`Fetch pipeline completed for ${capturedAt.toISOString()}`);
+    await archiveRankingSnapshot(capturedAt, rankedArtists);
+    console.log(`Archived ranking snapshot for ${capturedAt.toISOString()}`);
+    await completeIngestRun(ingestRunId, {
+      artistCount: rankedArtists.length,
+      snapshotCount: rankedArtists.length,
+    });
+  } catch (error) {
+    await failIngestRun(ingestRunId, error);
+    throw error;
+  }
 
+  try {
+    const emailResult = await sendWeeklyRankingReport(capturedAt);
     return { capturedAt: capturedAt.toISOString(), email: emailResult };
   } catch (error) {
     console.error('Email report failed after successful DB ingest', error);

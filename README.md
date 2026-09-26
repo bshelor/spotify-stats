@@ -39,5 +39,8 @@ If you manage Node with `nvm`, this repo targets the version in [`.nvmrc`](/User
 ## Notes
 
 - The ingest flow fetches from Spotify, ranks the results, and upserts both `artists` and `artistSnapshots`.
+- Ingest runs are tracked in Postgres with provider, status, row counts, and errors for easier retry/debug history.
+- Artist snapshots are provider-aware, and provider-specific IDs are stored separately so future providers can map into the same canonical artist table.
+- Each successful ingest archives the ranked artist JSON and CSV under `data/{capturedAt}/` in S3. Objects under `data/` transition to Glacier Instant Retrieval after five years.
 - Weekly email reports are sent through AWS SES. If SES production access is not enabled, both the sender and recipients must be verified identities.
 - This repo uses Turborepo through the local `turbo` dependency, so you should run commands through `pnpm` after installing dependencies.

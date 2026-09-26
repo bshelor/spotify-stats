@@ -1,13 +1,15 @@
 import assert from 'node:assert/strict';
 
 import { config } from 'dotenv';
-import { and, eq, inArray } from 'drizzle-orm';
 
 import {
+  and,
   artists,
   artistSnapshots,
+  eq,
   getDb,
   getRankedArtistsAt,
+  inArray,
   upsertArtistsAndSnapshot,
 } from '@spotify-stats/db';
 
@@ -23,7 +25,7 @@ type ArtistInput = {
 
 const TEST_ID_A = `codex-artist-a-${Date.now()}`;
 const TEST_ID_B = `codex-artist-b-${Date.now()}`;
-const TEST_IDS = [TEST_ID_A, TEST_ID_B] as const;
+const TEST_IDS: [string, string] = [TEST_ID_A, TEST_ID_B];
 
 const initialCapturedAt = new Date('2026-07-23T00:00:00.000Z');
 const updatedCapturedAt = new Date('2026-07-23T01:00:00.000Z');

@@ -6,7 +6,18 @@ import { getSecret } from './utils/aws/secretsManager.js';
 
 const RECIPIENTS = ['bshelor24@gmail.com', 'christopher.a.shelor@gmail.com'];
 
-export const handler = async () => {
+type ScheduledEvent = {
+  time?: string;
+};
+
+function getCapturedAt(event?: ScheduledEvent) {
+  if (!event?.time) return undefined;
+
+  const capturedAt = new Date(event.time);
+  return Number.isNaN(capturedAt.getTime()) ? undefined : capturedAt;
+}
+
+export const handler = async (event?: ScheduledEvent) => {
   if (!process.env.DATABASE_URL) {
     const dbUrl = await getSecret('artist_stats_database_url');
     if (!dbUrl) throw new Error('artist_stats_database_url secret missing');
@@ -14,7 +25,7 @@ export const handler = async () => {
   }
 
   console.log('Starting weekly ingest handler');
-  const capturedAt = await fetch();
+  const capturedAt = await fetch(getCapturedAt(event));
   console.log(`Fetch pipeline completed for ${capturedAt.toISOString()}`);
   const { rankedArtistsCsvStr, artists } = await rank(capturedAt);
   console.log(`Ranked ${artists.length} artists for ${capturedAt.toISOString()}`);
@@ -22,23 +33,33 @@ export const handler = async () => {
   const topTen = prepareTopTenArtistSubstitutionData(artists);
   console.log('Preparing and sending email report');
 
-  return await sendBatch(
-    RECIPIENTS,
-    `Spotify Rankings - Week of ${capturedAt.toLocaleDateString()}`,
-    template,
-    template,
-    [
+  try {
+    const emailResult = await sendBatch(
+      RECIPIENTS,
+      `Spotify Rankings - Week of ${capturedAt.toLocaleDateString()}`,
+      template,
+      template,
+      [
+        {
+          content: Buffer.from(rankedArtistsCsvStr).toString('base64'),
+          filename: `all-ranked-artists-${capturedAt.toLocaleDateString()}.csv`,
+          type: 'text/csv',
+          disposition: 'attachment',
+          content_id: 'mytext',
+        },
+      ],
       {
-        content: Buffer.from(rankedArtistsCsvStr).toString('base64'),
-        filename: `all-ranked-artists-${capturedAt.toLocaleDateString()}.csv`,
-        type: 'text/csv',
-        disposition: 'attachment',
-        content_id: 'mytext',
+        ...topTen,
+        date: capturedAt.toLocaleDateString(),
       },
-    ],
-    {
-      ...topTen,
-      date: capturedAt.toLocaleDateString(),
-    },
-  );
+    );
+
+    return { capturedAt: capturedAt.toISOString(), email: emailResult };
+  } catch (error) {
+    console.error('Email report failed after successful DB ingest', error);
+    return {
+      capturedAt: capturedAt.toISOString(),
+      email: { status: 'failed' },
+    };
+  }
 };

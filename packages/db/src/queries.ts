@@ -1,7 +1,16 @@
 import { and, desc, eq, gte, ilike, lte, or, sql } from 'drizzle-orm';
 
 import { getDb } from './client';
-import { artists, artistSnapshots, type NewArtist } from './schema';
+import {
+  artistExternalIds,
+  artists,
+  artistSnapshots,
+  ingestRuns,
+  musicProvider,
+  type MusicProvider,
+  type NewArtist,
+  type NewArtistExternalId,
+} from './schema';
 
 export type RankedArtistInput = {
   id: string;
@@ -10,6 +19,8 @@ export type RankedArtistInput = {
   genres: string[];
   popularity: number;
 };
+
+export type IngestRunStatus = 'running' | 'completed' | 'failed';
 
 function escapeLikePattern(value: string) {
   return value.replaceAll('\\', '\\\\').replaceAll('%', '\\%').replaceAll('_', '\\_');
@@ -24,11 +35,12 @@ export async function getLatestCapturedAt() {
   const db = getDb();
   const [row] = await db
     .select({ capturedAt: sql<Date>`max(${artistSnapshots.capturedAt})` })
-    .from(artistSnapshots);
+    .from(artistSnapshots)
+    .where(eq(artistSnapshots.provider, musicProvider.spotify));
   return asDate(row?.capturedAt);
 }
 
-export async function getTopArtistsAt(capturedAt: Date, limit = 10) {
+export async function getTopArtistsAt(capturedAt: Date, limit = 10, provider: MusicProvider = musicProvider.spotify) {
   const db = getDb();
   return db
     .select({
@@ -41,12 +53,12 @@ export async function getTopArtistsAt(capturedAt: Date, limit = 10) {
     })
     .from(artistSnapshots)
     .innerJoin(artists, eq(artists.id, artistSnapshots.artistId))
-    .where(eq(artistSnapshots.capturedAt, capturedAt))
+    .where(and(eq(artistSnapshots.provider, provider), eq(artistSnapshots.capturedAt, capturedAt)))
     .orderBy(artistSnapshots.rank)
     .limit(limit);
 }
 
-export async function getRankedArtistsAt(capturedAt: Date) {
+export async function getRankedArtistsAt(capturedAt: Date, provider: MusicProvider = musicProvider.spotify) {
   const db = getDb();
   return db
     .select({
@@ -59,11 +71,11 @@ export async function getRankedArtistsAt(capturedAt: Date) {
     })
     .from(artistSnapshots)
     .innerJoin(artists, eq(artists.id, artistSnapshots.artistId))
-    .where(eq(artistSnapshots.capturedAt, capturedAt))
+    .where(and(eq(artistSnapshots.provider, provider), eq(artistSnapshots.capturedAt, capturedAt)))
     .orderBy(artistSnapshots.rank);
 }
 
-export async function getArtistTimeSeries(artistId: string) {
+export async function getArtistTimeSeries(artistId: string, provider: MusicProvider = musicProvider.spotify) {
   const db = getDb();
   return db
     .select({
@@ -72,7 +84,7 @@ export async function getArtistTimeSeries(artistId: string) {
       rank: artistSnapshots.rank,
     })
     .from(artistSnapshots)
-    .where(eq(artistSnapshots.artistId, artistId))
+    .where(and(eq(artistSnapshots.provider, provider), eq(artistSnapshots.artistId, artistId)))
     .orderBy(artistSnapshots.capturedAt);
 }
 
@@ -87,6 +99,7 @@ export async function getAllArtistsAt(
   limit = 200,
   offset = 0,
   search?: string,
+  provider: MusicProvider = musicProvider.spotify,
 ) {
   const db = getDb();
   const trimmedSearch = search?.trim();
@@ -105,13 +118,14 @@ export async function getAllArtistsAt(
     .where(
       trimmedSearch && searchPattern
         ? and(
+            eq(artistSnapshots.provider, provider),
             eq(artistSnapshots.capturedAt, capturedAt),
             or(
               ilike(artists.name, searchPattern),
               sql<boolean>`${artists.genres}::text ILIKE ${searchPattern} ESCAPE '\\'`,
             ),
           )
-        : eq(artistSnapshots.capturedAt, capturedAt),
+        : and(eq(artistSnapshots.provider, provider), eq(artistSnapshots.capturedAt, capturedAt)),
     )
     .orderBy(artistSnapshots.rank)
     .limit(limit)
@@ -122,6 +136,7 @@ export async function getBiggestMovers(
   windowStart: Date,
   windowEnd: Date,
   limit = 10,
+  provider: MusicProvider = musicProvider.spotify,
 ) {
   const db = getDb();
   const startRanks = db.$with('start_ranks').as(
@@ -131,7 +146,7 @@ export async function getBiggestMovers(
         rank: artistSnapshots.rank,
       })
       .from(artistSnapshots)
-      .where(eq(artistSnapshots.capturedAt, windowStart)),
+      .where(and(eq(artistSnapshots.provider, provider), eq(artistSnapshots.capturedAt, windowStart))),
   );
   const endRanks = db.$with('end_ranks').as(
     db
@@ -141,7 +156,7 @@ export async function getBiggestMovers(
         popularity: artistSnapshots.popularity,
       })
       .from(artistSnapshots)
-      .where(eq(artistSnapshots.capturedAt, windowEnd)),
+      .where(and(eq(artistSnapshots.provider, provider), eq(artistSnapshots.capturedAt, windowEnd))),
   );
 
   return db
@@ -165,15 +180,20 @@ export async function getBiggestMovers(
 export async function upsertArtistsAndSnapshot(
   rankedArtists: RankedArtistInput[],
   capturedAt: Date,
+  options: {
+    provider?: MusicProvider;
+    ingestRunId?: string;
+  } = {},
 ) {
   if (rankedArtists.length === 0) {
     console.log(`Skipping DB upsert for empty artist batch at ${capturedAt.toISOString()}`);
     return;
   }
   const db = getDb();
+  const provider = options.provider ?? musicProvider.spotify;
 
   console.log(
-    `Upserting ${rankedArtists.length} artists and snapshots for ${capturedAt.toISOString()}`,
+    `Upserting ${rankedArtists.length} ${provider} artists and snapshots for ${capturedAt.toISOString()}`,
   );
 
   const artistRows: NewArtist[] = rankedArtists.map((a) => ({
@@ -181,6 +201,14 @@ export async function upsertArtistsAndSnapshot(
     name: a.name,
     href: a.href,
     genres: a.genres,
+    lastSeenAt: capturedAt,
+  }));
+
+  const externalIdRows: NewArtistExternalId[] = rankedArtists.map((a) => ({
+    artistId: a.id,
+    provider,
+    externalId: a.id,
+    href: a.href,
     lastSeenAt: capturedAt,
   }));
 
@@ -204,9 +232,27 @@ export async function upsertArtistsAndSnapshot(
       });
   }
 
+  for (let i = 0; i < externalIdRows.length; i += chunkSize) {
+    const chunk = externalIdRows.slice(i, i + chunkSize);
+    console.log(`Upserting external id chunk ${Math.floor(i / chunkSize) + 1} with ${chunk.length} rows`);
+    await db
+      .insert(artistExternalIds)
+      .values(chunk)
+      .onConflictDoUpdate({
+        target: [artistExternalIds.provider, artistExternalIds.externalId],
+        set: {
+          artistId: sql`excluded.artist_id`,
+          href: sql`excluded.href`,
+          lastSeenAt: sql`excluded.last_seen_at`,
+        },
+      });
+  }
+
   const snapshotRows = rankedArtists.map((a, idx) => ({
     artistId: a.id,
+    provider,
     capturedAt,
+    ingestRunId: options.ingestRunId,
     popularity: a.popularity,
     rank: idx + 1,
   }));
@@ -225,22 +271,94 @@ export async function getCaptureDates(limit = 20) {
   const rows = await db
     .selectDistinct({ capturedAt: artistSnapshots.capturedAt })
     .from(artistSnapshots)
+    .where(eq(artistSnapshots.provider, musicProvider.spotify))
     .orderBy(desc(artistSnapshots.capturedAt))
     .limit(limit);
   return rows.map((r) => asDate(r.capturedAt)).filter((value): value is Date => value !== null);
 }
 
-export async function getSnapshotsBetween(artistId: string, from: Date, to: Date) {
+export async function getSnapshotsBetween(
+  artistId: string,
+  from: Date,
+  to: Date,
+  provider: MusicProvider = musicProvider.spotify,
+) {
   const db = getDb();
   return db
     .select()
     .from(artistSnapshots)
     .where(
       and(
+        eq(artistSnapshots.provider, provider),
         eq(artistSnapshots.artistId, artistId),
         gte(artistSnapshots.capturedAt, from),
         lte(artistSnapshots.capturedAt, to),
       ),
     )
     .orderBy(artistSnapshots.capturedAt);
+}
+
+export async function createIngestRun(input: {
+  id: string;
+  provider?: MusicProvider;
+  capturedAt: Date;
+}) {
+  const db = getDb();
+  const provider = input.provider ?? musicProvider.spotify;
+  const [row] = await db
+    .insert(ingestRuns)
+    .values({
+      id: input.id,
+      provider,
+      capturedAt: input.capturedAt,
+      status: 'running',
+    })
+    .onConflictDoUpdate({
+      target: ingestRuns.id,
+      set: {
+        provider,
+        capturedAt: input.capturedAt,
+        status: 'running',
+        startedAt: sql`now()`,
+        finishedAt: null,
+        artistCount: null,
+        snapshotCount: null,
+        error: null,
+      },
+    })
+    .returning();
+
+  return row;
+}
+
+export async function completeIngestRun(
+  id: string,
+  counts: {
+    artistCount: number;
+    snapshotCount: number;
+  },
+) {
+  const db = getDb();
+  await db
+    .update(ingestRuns)
+    .set({
+      status: 'completed',
+      finishedAt: new Date(),
+      artistCount: counts.artistCount,
+      snapshotCount: counts.snapshotCount,
+      error: null,
+    })
+    .where(eq(ingestRuns.id, id));
+}
+
+export async function failIngestRun(id: string, error: unknown) {
+  const db = getDb();
+  await db
+    .update(ingestRuns)
+    .set({
+      status: 'failed',
+      finishedAt: new Date(),
+      error: error instanceof Error ? error.message : String(error),
+    })
+    .where(eq(ingestRuns.id, id));
 }

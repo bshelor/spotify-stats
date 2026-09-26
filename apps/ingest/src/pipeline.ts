@@ -1,6 +1,7 @@
 import type { Artist } from './rankArtists.js';
 import * as spotify from './services/spotify.js';
 import type { FetchArtistsOptions } from './services/spotify.js';
+import type { MusicProviderAdapter } from './providers/types.js';
 
 export const alphabetLetters = [
   'a',
@@ -124,12 +125,16 @@ async function runSearchPass(
 }
 
 export async function runFetchPipeline(
-  fetchArtists: FetchArtistsFn,
+  providerOrFetchArtists: MusicProviderAdapter | FetchArtistsFn,
   persistArtists: PersistArtistsFn,
   primaryQueries: string[] = defaultPrimarySearchQueries,
   supplementalQueries: string[] = defaultSupplementalSearchQueries,
   capturedAt = new Date(),
 ) {
+  const fetchArtists =
+    typeof providerOrFetchArtists === 'function'
+      ? providerOrFetchArtists
+      : providerOrFetchArtists.fetchArtists;
   const artistMap = new Map<string, Artist>();
 
   await runSearchPass(

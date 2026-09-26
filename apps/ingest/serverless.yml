@@ -68,6 +68,14 @@ resources:
       Type: 'AWS::S3::Bucket'
       Properties:
         BucketName: artist-data-test-2
+        LifecycleConfiguration:
+          Rules:
+            - Id: transition-data-archive-after-five-years
+              Status: Enabled
+              Prefix: data/
+              Transitions:
+                - StorageClass: GLACIER_IR
+                  TransitionInDays: 1825
 
 plugins:
   - serverless-esbuild

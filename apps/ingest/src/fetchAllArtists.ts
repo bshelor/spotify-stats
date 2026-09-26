@@ -6,13 +6,16 @@ import * as spotify from './services/spotify.js';
 
 config({ path: '.env' });
 
-export const fetch = async () => {
+export const fetch = async (capturedAt?: Date) => {
   try {
-    const { capturedAt } = await runFetchPipeline(
+    const result = await runFetchPipeline(
       spotify.fetchArtists,
       upsertArtistsAndSnapshot,
+      undefined,
+      undefined,
+      capturedAt,
     );
-    return capturedAt;
+    return result.capturedAt;
   } catch (error) {
     console.error(error);
     throw error;

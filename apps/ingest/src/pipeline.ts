@@ -128,8 +128,8 @@ export async function runFetchPipeline(
   persistArtists: PersistArtistsFn,
   primaryQueries: string[] = defaultPrimarySearchQueries,
   supplementalQueries: string[] = defaultSupplementalSearchQueries,
+  capturedAt = new Date(),
 ) {
-  const capturedAt = new Date();
   const artistMap = new Map<string, Artist>();
 
   await runSearchPass(

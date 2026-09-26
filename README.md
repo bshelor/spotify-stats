@@ -15,6 +15,7 @@ The ingest pipeline expects these values or secrets:
 - `DATABASE_URL` for the live database connection
 - `spotify_auth_token` in AWS Secrets Manager
 - `artist_stats_database_url` in AWS Secrets Manager if `DATABASE_URL` is not already set
+- Verified AWS SES sender and recipient identities in `us-east-1` while the AWS account is in the SES sandbox
 
 If `DATABASE_URL` is missing, the ingest handler will try to load it from AWS Secrets Manager.
 
@@ -38,4 +39,5 @@ If you manage Node with `nvm`, this repo targets the version in [`.nvmrc`](/User
 ## Notes
 
 - The ingest flow fetches from Spotify, ranks the results, and upserts both `artists` and `artistSnapshots`.
+- Weekly email reports are sent through AWS SES. If SES production access is not enabled, both the sender and recipients must be verified identities.
 - This repo uses Turborepo through the local `turbo` dependency, so you should run commands through `pnpm` after installing dependencies.

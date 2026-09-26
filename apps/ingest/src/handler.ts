@@ -1,6 +1,6 @@
 import { fetch } from './fetchAllArtists.js';
 import { template } from './html/weekly_rankings_report.js';
-import { sendBatch, prepareTopTenArtistSubstitutionData } from './utils/sendgrid/emails.js';
+import { sendBatch, prepareTopTenArtistSubstitutionData } from './utils/aws/ses.js';
 import { rank } from './rankArtists.js';
 import { getSecret } from './utils/aws/secretsManager.js';
 

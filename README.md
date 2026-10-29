@@ -30,6 +30,7 @@ If you manage Node with `nvm`, this repo targets the version in [`.nvmrc`](/User
 ## Common Commands
 
 - `pnpm build` - run the workspace build
+- `pnpm dev:local` - start local Postgres, migrate, seed, and launch the web app
 - `pnpm dev:web` - run the Next.js web app
 - `pnpm dev:ingest` - run the ingest job locally
 - `pnpm type-check` - run TypeScript checks across the workspace
@@ -44,3 +45,56 @@ If you manage Node with `nvm`, this repo targets the version in [`.nvmrc`](/User
 - Each successful ingest archives the ranked artist JSON and CSV under `data/{capturedAt}/` in S3. Objects under `data/` transition to Glacier Instant Retrieval after five years.
 - Weekly email reports are sent through AWS SES. If SES production access is not enabled, both the sender and recipients must be verified identities.
 - This repo uses Turborepo through the local `turbo` dependency, so you should run commands through `pnpm` after installing dependencies.
+
+## Local Postgres and database tests
+
+Docker must be running. The Compose database binds only to loopback port 55432
+and persists across `db:down` / `db:up`. It uses Postgres 17.6; confirm the Neon
+Postgres major version before treating local results as production parity.
+
+```bash
+pnpm dev:local
+```
+
+Open http://localhost:3000. This command waits for Postgres to be healthy, applies
+migrations and repeatable fixtures, then starts Next.js with the local database
+URL overriding any inherited URL or frontend `.env.local`. The local frontend uses polling for file changes to avoid OS file-watcher limits.
+Setup failures stop
+the command before the frontend starts. No AWS, Spotify, or Neon credentials
+are needed. Press Ctrl+C to stop the frontend; Postgres stays running for reuse.
+Run `pnpm db:down` when finished with the database.
+
+Set `DATABASE_URL=postgresql://spotify:spotify@127.0.0.1:55432/spotify_stats_dev`
+explicitly when running `pnpm dev:ingest`. This invokes real
+Spotify and AWS services; it is not an offline test. The local entry point
+requires a URL and never falls back to the remote database secret. Existing
+environment variables take precedence over dotenv files.
+
+`db:migrate:local` and `db:seed` always target the Compose development database,
+regardless of ambient `DATABASE_URL`. Seeds are repeatable and add 50 artists
+with 10 weekly capture dates each (500 snapshots), varied genres, and changing
+popularity and ranks. Existing fixture rows are updated; other local data is preserved. `pnpm db:down` preserves data; to intentionally erase
+local development data, run `docker compose down --volumes`.
+
+```bash
+pnpm test:db
+pnpm --filter @spotify-stats/ingest test:pipeline
+```
+
+`test:db` starts a separate disposable Postgres container with a random port,
+tests the legacy migration/backfill, applies the migration chain to an empty
+database, and runs the real ingest query integration test. It overrides any
+inherited database URL, does not read `.env`, and stops the container afterward.
+It does not need Neon, Spotify, or AWS credentials. The raw ingest test rejects
+nonlocal targets and should only be invoked through this runner. CI can run the
+same commands with Docker available. Images must be downloaded on first use.
+
+The application uses Drizzle with `pg` for both local Postgres and Neon. The pool
+is limited to two connections per process and uses the connection string's TLS
+settings; retain Neon's SSL parameters and use its pooled endpoint for deployed
+Lambda workloads. Pools are reused across warm invocations. Call `closeDb()` in
+scripts/tests when finished. Use `createDb(url)` for independently owned clients.
+
+Use `db:generate` to commit schema changes as migrations. `db:migrate` remains
+an explicit `DATABASE_URL`-targeted command for managed environments; it does not
+load the root `.env` automatically. Never use production credentials for tests.

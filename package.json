@@ -13,7 +13,13 @@
     "lint": "turbo run lint",
     "type-check": "turbo run type-check",
     "db:generate": "pnpm --filter @spotify-stats/db db:generate",
-    "db:migrate": "pnpm --filter @spotify-stats/db db:migrate"
+    "db:migrate": "pnpm --filter @spotify-stats/db db:migrate",
+    "db:up": "docker compose up -d --wait",
+    "db:down": "docker compose down",
+    "db:migrate:local": "pnpm --filter @spotify-stats/db exec tsx scripts/local.ts",
+    "db:seed": "pnpm --filter @spotify-stats/db exec tsx scripts/local.ts seed",
+    "test:db": "pnpm --filter @spotify-stats/db exec tsx scripts/test.ts",
+    "dev:local": "pnpm db:up && pnpm db:seed && WATCHPACK_POLLING=true DATABASE_URL=postgresql://spotify:spotify@127.0.0.1:55432/spotify_stats_dev pnpm dev:web"
   },
   "devDependencies": {
     "turbo": "^2.3.3",

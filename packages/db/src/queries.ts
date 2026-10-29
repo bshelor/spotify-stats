@@ -212,8 +212,7 @@ export async function upsertArtistsAndSnapshot(
     lastSeenAt: capturedAt,
   }));
 
-  // Neon HTTP driver does not support multi-statement transactions, so run
-  // these in sequence. Chunked to stay under the 65k parameter limit.
+  // Keep retries idempotent across chunks. Chunked to stay under the 65k parameter limit.
   const chunkSize = 500;
   for (let i = 0; i < artistRows.length; i += chunkSize) {
     const chunk = artistRows.slice(i, i + chunkSize);

@@ -4,5 +4,9 @@
     "outDir": "dist",
     "noEmit": true
   },
-  "include": ["src/**/*.ts", "drizzle.config.ts"]
+  "include": [
+    "src/**/*.ts",
+    "drizzle.config.ts",
+    "scripts/**/*.ts"
+  ]
 }

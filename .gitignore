@@ -9,3 +9,5 @@ node_modules
 .next
 *.tsbuildinfo
 packages/db/drizzle/out
+
+.pnpm-store/

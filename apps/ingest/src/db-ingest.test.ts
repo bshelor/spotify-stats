@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 
-import { config } from 'dotenv';
+import { closeDb } from '@spotify-stats/db';
 
 import {
   and,
@@ -13,7 +13,12 @@ import {
   upsertArtistsAndSnapshot,
 } from '@spotify-stats/db';
 
-config({ path: '.env' });
+const target = new URL(process.env.DATABASE_URL ?? 'postgresql://invalid');
+if (process.env.DB_TEST_RUNNER !== 'isolated' ||
+    !['localhost', '127.0.0.1', '[::1]'].includes(target.hostname) ||
+    target.pathname !== '/spotify_stats_test') {
+  throw new Error('Run this test through pnpm test:db using an isolated local database');
+}
 
 type ArtistInput = {
   id: string;
@@ -130,7 +135,7 @@ async function main() {
 
     console.log('DB ingest integration test passed');
   } finally {
-    await cleanup();
+    try { await cleanup(); } finally { await closeDb(); }
   }
 }
 
